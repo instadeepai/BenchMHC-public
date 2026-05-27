@@ -1,0 +1,65 @@
+# MacOS specific
+.DS_Store
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*-workspace
+.cursorrules
+
+# Jupyter Notebook checkpoints
+**/.ipynb_checkpoints/
+
+# Data and models directory
+/data/
+/models/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Logs
+.logs
+lightning_logs
+
+# MLflow
+mlruns/
+mlflow.db
+mlartifacts/
+
+# Cache
+.cache
+
+# File with environment variables
+.env
+
+# Test-related files
+.coverage
+pytest-coverage.txt
+pytest.xml
+
+# Profiling files
+profiling
+
+# Generated static documentation
+site/

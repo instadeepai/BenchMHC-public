@@ -1,0 +1,35 @@
+extends: default
+
+rules:
+  # Set line length to max 150 characters
+  line-length:
+    max: 150
+    # Allow using URI
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Ensure indentation is 2 spaces
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Do not require document start marker (---)
+  document-start: disable
+
+  # Require a new line at the end of the file
+  new-line-at-end-of-file: enable
+
+  # Disallow trailing spaces
+  trailing-spaces: disable
+
+  # Set colons to be followed by a space
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+
+  # Ensure file doesn't end with a new line
+  new-lines: disable
+
+  # Allow comments only if they are followed by at least one space
+  comments:
+    min-spaces-from-content: 1

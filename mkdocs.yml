@@ -1,0 +1,167 @@
+site_name: BenchMHC
+site_url: https://instadeepai.github.io/BenchMHC-public/
+repo_url: https://github.com/instadeepai/BenchMHC-public
+site_author: InstaDeep
+copyright: Copyright &copy; 2025 InstaDeep
+
+theme:
+  name: material
+  language: en
+  logo: media/instadeep_logo.png
+  palette:
+    - scheme: default
+      primary: white
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - content.footnote.tooltips
+    - content.code.copy
+
+# Use recommended validation settings, cf. https://www.mkdocs.org/user-guide/configuration/#validation
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+plugins:
+  - search
+  # Use 'offline' to make sure that the search works when site directory is distributed as a
+  # static download cf. https://squidfunk.github.io/mkdocs-material/setup/building-for-offline-usage/#built-in-offline-plugin
+  - offline
+  - git-revision-date
+  # Include the README.md file in the docs and support relative links
+  # cf. https://github.com/mondeja/mkdocs-include-markdown-plugin
+  - include-markdown
+  # Convert Github admonitions to mkdocs admonitions
+  # cf. https://github.com/PGijsbers/admonitions
+  - gh-admonitions
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_signature_annotations: true
+            # Separate function name and signature and use function name as title
+            separate_signature: true
+            line_length: 100
+            annotations_path: source
+            docstring_style: google
+            # Automatically add link to type of a parameter if available e.g. for int it
+            # will add a link to python documentation
+            signature_crossrefs: true
+            # Tag each member as class, func, meth, etc.
+            show_symbol_type_heading: true
+            inherited_members: true
+            show_symbol_type_toc: true
+            # Add __init__ signature into class definition instead of separate method
+            merge_init_into_class: true
+  # Use tags in pages
+  - tags
+
+# Be able to use it inside docker
+dev_addr: 0.0.0.0:8000
+
+markdown_extensions:
+  # Support emojis
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  # Following extensions add lines and syntax highlighting into code blocks
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - mdx_truly_sane_lists
+  # Allow to use collapsible call-outs
+  # https://squidfunk.github.io/mkdocs-material/reference/admonitions/
+  - admonition
+  - pymdownx.details
+  - mkdocs-click
+  # Allow footnotes
+  - footnotes
+  # Allow image captions
+  - pymdownx.blocks.caption
+    # It allows to render maths equations
+  - pymdownx.arithmatex:
+      generic: true
+  # Allow abbreviations
+  - abbr:
+  # Automatically inject acronyms in the documentation as footnote
+  # cf. https://squidfunk.github.io/mkdocs-material/reference/tooltips/#adding-a-glossary-mkdocsyml
+  - pymdownx.snippets:
+      auto_append:
+        - includes/acronyms.md
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+# Watch source code when running mkdocs serve for docs built via source code
+watch:
+  - bench_mhc/
+    # Required since it contains acronyms.
+  - ./includes/
+
+nav:
+  - Home: README.md
+  - Guides:
+      - Overview: guides/README.md
+      - Glossary: guides/glossary.md
+      - Installation: guides/installation.md
+      - Bucket: guides/bucket.md
+      - Protein feature assignment: guides/assign_protein_features.md
+      - Peptide refinement: guides/refine_peptides.md
+      - Decoys generation: guides/decoys_generation.md
+      - Training:
+          - Overview: guides/training.md
+          - Configuration: guides/training_configuration.md
+      - Inference: guides/inference.md
+      - Calibration: guides/calibration.md
+      - Development:
+          - Overview: guides/development/README.md
+          - Repository layout: guides/development/repo_layout.md
+          - Python dependencies: guides/development/python_dependencies.md
+          - Pre-commit hooks: guides/development/pre_commit_hooks.md
+          - MLflow: guides/development/mlflow.md
+          - Documentation: guides/development/documentation.md
+  - Datasets:
+      - Overview: datasets/README.md
+      - datasets/ms_ligands.md
+      - datasets/cd8_epitopes.md
+  - Models:
+      - Overview: models/README.md
+      - Benchmarks:
+          - MS ligands - v2.0.0: models/benchmarks/benchmark_v_2_0_0.md
+      - models/netmhcpan41_v_0_0_0.md
+      - models/netmhcpan41_v_1_1_0.md
+  - API Reference:
+      - Overview: reference/api/index.md
+      - reference/api/assign_protein_features.md
+      - reference/api/generate_decoys.md
+      - reference/api/train.md
+      - reference/api/calibrate.md
+      - reference/api/predict.md
+      - reference/api/evaluate.md
+      - reference/api/generate_performance_plot.md
+      - reference/api/refine_peptides.md
+      - reference/api/compute_allele_nnalign_features.md
+      - reference/api/format_allele_feature.md
+
+  - Contributing: CONTRIBUTING.md
+  - License: LICENSE.md

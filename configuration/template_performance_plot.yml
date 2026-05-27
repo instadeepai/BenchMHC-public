@@ -1,0 +1,23 @@
+# Template configuration file for the generate-performance-plot command line.
+
+# This is the name of the model that will be display in the legend of the plot
+Model1:
+  metrics_path: path/to/metrics1.csv # path to the related metric file
+Model2:
+  metrics_path: path/to/metrics2.csv
+  # if specified, this model will be colored the same as Model1 but with a lighter teint.
+  bright_version_of: Model1
+Model3:
+  metrics_path: path/to/metrics3.csv
+Model4:
+  metrics_path: path/to/metrics4.csv
+  bright_version_of: Model3
+Model5:
+  metrics_path: path/to/metrics5.csv
+  bright_version_of: Model4
+Model6:
+  metrics_path: path/to/metrics6.csv
+Model7:
+  metrics_path: path/to/metrics7.csv
+Model8:
+  metrics_path: path/to/metrics8.csv

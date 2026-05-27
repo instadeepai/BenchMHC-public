@@ -1,0 +1,88 @@
+# NetMHCpan 4.1 (NNAlign) configuration for a model trained on BA + SA data
+
+variables:
+  inputs:
+    # Peptide-related features
+    peptide:
+      class_name: NNAlignVariable
+      unk_token: X
+      aas: &aas
+        - A
+        - R
+        - N
+        - D
+        - C
+        - Q
+        - E
+        - G
+        - H
+        - I
+        - L
+        - K
+        - M
+        - F
+        - P
+        - S
+        - T
+        - W
+        - Y
+        - V
+
+    # Allele feature (pseudo-sequence)
+    allele:
+      class_name: AASeqVariable
+      unk_token: X
+      aas: *aas
+      mapping_file_path: data/mappings/allele2netmhc_pseudo_seq.json
+
+  outputs:
+    hit:
+      class_name: BinaryOutput
+      default_value: -1
+      loss:
+        class_name: BCELoss
+        reduction: "mean"
+      metrics:
+        - class_name: BinaryAccuracy
+          name: binary_accuracy
+        - class_name: BinaryAveragePrecision
+          name: average_precision
+    binding_affinity:
+      class_name: NumericOutput
+      default_value: -1
+      loss:
+        class_name: MSELoss
+        reduction: "mean"
+      metrics:
+        - class_name: MeanSquaredError
+          name: mean_squared_error
+
+model:
+  class_name: MHC1NNAlignModel
+  hidden_dim: null # 56 or 66 in the original paper. If set to null, the hidden dimension is set randomly between 56 or 66.
+
+training:
+  logger:
+    class_name: MLflowLogger # 'MLflowLogger' or 'CSVLogger'
+    tags: # Additional tags for the experiment
+      - "mhc1"
+      - "ba"
+      - "sa"
+  epochs: 2000
+  batch_size: 512
+  optimizer:
+    class_name: "SGD"
+    lr: 0.05
+  # Parameters for the DataLoader, see. https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader
+  num_workers: 0
+  prefetch_factor: null
+  callbacks:
+    - class_name: EarlyStopping
+      monitor: "val/loss"
+      mode: "min"
+      patience: 20
+      verbose: true
+  # List of GPU indices for GPU training
+  # If gpus: null is set, falls back to CPU training
+  gpus:
+    - 0

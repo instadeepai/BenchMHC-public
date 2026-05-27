@@ -1,0 +1,127 @@
+name: Run linters
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+env:
+  IMAGE_TAG: ghcr.io/instadeepai/bench-mhc-public/lint:${{ github.sha }}
+  IS_FORK: >-
+    ${{
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    }}
+
+jobs:
+  lint:
+    name: Build and run linters
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Checkout the code
+        uses: actions/checkout@v4
+        with:
+          # Checkout pull request HEAD commit instead of merge commit
+          # For push events, this is undefined so checkout uses the triggering commit
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Fetch enough history to cover all PR commits
+          fetch-depth: 50
+
+      - name: Log in to GHCR
+        if: env.IS_FORK != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the lint image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: lint
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_TAG }}
+          cache-from: type=registry,ref=ghcr.io/instadeepai/bench-mhc-public/lint/cache
+          # Pushing the cache to the registry requires write auth, only possible on internal PRs
+          cache-to: ${{ env.IS_FORK != 'true' && 'type=registry,ref=ghcr.io/instadeepai/bench-mhc-public/lint/cache,mode=max' || '' }}
+
+      - name: Set base branch
+        id: base_branch
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BASE_BRANCH=${{ github.base_ref }}" >> $GITHUB_OUTPUT
+          else
+            # For other events (e.g. push), use github.ref_name
+            echo "BASE_BRANCH=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch the base branch
+        env:
+          BASE_BRANCH: ${{ steps.base_branch.outputs.BASE_BRANCH }}
+        run: git fetch origin $BASE_BRANCH
+
+      - name: Run the linters
+        env:
+          BASE_BRANCH: ${{ steps.base_branch.outputs.BASE_BRANCH }}
+        # The volume-mounted /workspace is owned by the host runner UID, not the
+        # container user, so we need to add it as a safe directory.
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace -w /workspace \
+            -e BASE_BRANCH="$BASE_BRANCH" \
+            ${{ env.IMAGE_TAG }} \
+            bash -c '
+              set -e
+              git config --global --add safe.directory /workspace
+
+              echo "BASE_BRANCH: $BASE_BRANCH"
+              HEAD_SHA=$(git rev-parse HEAD)
+              echo "HEAD_SHA: $HEAD_SHA"
+
+              echo "Running the linters on all files at HEAD ($HEAD_SHA)..."
+              pre-commit run --all-files
+
+              COMMITS=$(git rev-list --reverse origin/$BASE_BRANCH..HEAD || true)
+              if [ -z "$COMMITS" ]; then
+                echo "No new commits vs $BASE_BRANCH, checking last commit only..."
+                COMMITS=$HEAD_SHA
+              else
+                echo "COMMITS:"
+                echo "$COMMITS"
+              fi
+
+              # Only the commit-msg hook is checked per commit. Running the full
+              # pre-commit on every historical commit is unreliable when the PR
+              # changes dependencies (the Docker image is built from HEAD, so
+              # older commits are linted against a mismatched environment).
+              for commit in $COMMITS; do
+                echo "🔍 Checking commit message for $commit"
+                git log -1 --pretty=%B "$commit" > current_commit_msg
+                pre-commit run --hook-stage commit-msg --commit-msg-filename current_commit_msg
+              done
+            '

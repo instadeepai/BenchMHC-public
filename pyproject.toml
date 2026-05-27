@@ -1,0 +1,143 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "setuptools_scm"]
+
+[dependency-groups]
+dev = [
+  "pytest-cov>=6.0.0",
+  "pytest>=8.3.3"
+]
+doc = [
+  "black>=24.4.2",
+  "mdx-truly-sane-lists>=1.3",
+  "mkdocs-click>=0.8.1",
+  "mkdocs-git-revision-date-plugin>=0.3.2",
+  "mkdocs-github-admonitions-plugin>=0.0.3",
+  "mkdocs-include-markdown-plugin>=7.1.5",
+  "mkdocs-material>=9.5.46",
+  "mkdocs>=1.6.1",
+  "mkdocstrings[python]>=0.29.0",
+  "pymdown-extensions>=10.12"
+]
+lint = [
+  "mypy>=1.14.1",
+  "pre-commit==4.0.1",
+  "types-PyYAML>=6.0.12",
+  "types-tqdm>=4.67.0.20241221"
+]
+
+[project]
+authors = [
+  {email = "d.colombo@instadeep.com", name = "Daniel Colombo"},
+  {email = "m.perier-dulhoste@instadeep.com", name = "Martin Perier-Dulhoste"},
+  {email = "t.borck@instadeep.com", name = "Théomé Borck"},
+  {name = "InstaDeep"}
+]
+dependencies = [
+  "biopython>=1.84",
+  "lightning>=2.4.0",
+  "matplotlib>=3.10.1",
+  "mhcgnomes>=1.8.6",
+  "mlflow-skinny>=3.10.0",
+  "nbconvert>=7.16.5",
+  "notebook>=7.2.2",
+  "numpy==1.26.4",
+  "polars[numpy]>=1.25.2",
+  "python-dotenv>=1.0.1",
+  "pyyaml>=6.0.2",
+  "rich-click>=1.8.3",
+  "scikit-learn>=1.6.1",
+  "scipy-stubs>=1.15.2.1",
+  "seaborn>=0.13.2",
+  "torch==2.2.2",
+  "torchvision>=0.17.2",
+  "tqdm>=4.67.1",
+  "types-seaborn>=0.13.2.20250111"
+]
+description = "Make pMHC presentation models benchmark happen"
+dynamic = ["version"]
+license = "Apache-2.0 AND CC-BY-NC-SA-4.0"
+license-files = ["LICENSE.md"]
+name = "bench-mhc"
+readme = "README.md"
+requires-python = "==3.12.*"
+
+[project.scripts]
+assign-protein-features = "bench_mhc.__main__:assign_protein_features"
+bench-mhc = "bench_mhc.__main__:main"
+calibrate = "bench_mhc.__main__:calibrate"
+compute-nnalign-features = "bench_mhc.__main__:compute_nnalign_features"
+evaluate = "bench_mhc.__main__:evaluate"
+format-allele-feature = "bench_mhc.__main__:format_allele_feature"
+generate-decoys = "bench_mhc.__main__:generate_decoys"
+generate-performance-plot = "bench_mhc.__main__:generate_performance_plot"
+predict = "bench_mhc.__main__:predict"
+refine-peptides = "bench_mhc.__main__:refine_peptides"
+train = "bench_mhc.__main__:train"
+
+[tool.mypy]
+disallow_untyped_calls = true # Disallow calling functions that don't have type annotations
+disallow_untyped_defs = true # Disallow function definitions without type annotations
+no_implicit_optional = true # Disallow implicit use of Optional (i.e., arguments cannot default to None unless explicitly Optional)
+python_version = "3.12" # Specify the Python version to check against
+show_error_context = true # Show context for errors to make it easier to understand what went wrong
+strict_optional = true # Enable strict checks for optional types (requires explicit handling of None)
+warn_redundant_casts = true # Warn if casts are redundant or unnecessary
+warn_unreachable = true # Enable warnings for unreachable code
+warn_unused_ignores = true # Warn if a '# type: ignore' comment is not needed or is unused
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["mhcgnomes.*", "sklearn.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "A", # flake8-builtins
+  "ARG", # flake8-unused-arguments
+  "B", # flake8-bugbear
+  "C", # flake8-comprehensions
+  "C90", # mccabe == cognitive-complexity
+  "D", # pydocstyle
+  "E", # pycodestyle
+  "F", # Pyflakes
+  "F632", # pyflakes: is-literal
+  "I", # isort
+  "N", # pep8-naming
+  "PT", # flake8-pytest-style
+  "UP", # pyupgrade
+  "W605" # pycodestyle: invalid-escape-sequence
+]
+
+[tool.ruff.lint.flake8-errmsg]
+max-string-length = 20
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.setuptools.packages.find]
+include = ["bench_mhc*"]
+
+[tool.setuptools_scm]
+# If the .git is not available, use an hardcoded fallback version
+fallback_version = "0.0.0"
+
+[tool.uv]
+# cf. https://github.com/astral-sh/uv/issues/12440
+build-constraint-dependencies = ["setuptools<78.0.1"]
+environments = [
+  "sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "sys_platform == 'linux'"
+]

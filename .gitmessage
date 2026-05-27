@@ -1,0 +1,35 @@
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+# The <type> should be one of the following :
+# - `build`: Changes to our deployment configuration (e.g. docker, requirements)
+# - `ci` : Changes to our CI configuration files and scripts
+# - `docs` : Documentation changes
+# - `feat` : A new feature
+# - `fix` : A bug fix
+# - `perf` : A code change that improves performance
+# - `refactor` : A code change that neither fixes a bug nor adds a feature
+# - `style` : Changes that do not affect the meaning of the code (white-space, formatting, missing
+#     semi-colons, etc)
+# - `test` : Adding missing tests or correcting existing tests
+#
+# The <scope> is mandatory and it describes the module affected by the changes
+#     - Conventions for `<scope>` section:
+#      - if you want to add a new module in the repo (ex: `bench_mhc/cli/my_new_command.py`) you can
+#        use the name of the parent directory as the scope (ex:
+#        `feat(cli): add <my_new_command_line> command line`) since the module
+#        (`my_new_command_line.py`) does not yet exist before the commit.
+#      - if you just modified an already existing module (ex: `my_new_command_line.py`), you can
+#        directly use the file name in the scope (ex:
+#        `feat(my_new_command_line): add my new feature`).
+#      - if your changes affect the whole repo, use `all` for the scope
+#        `style(all): change mhc naming convention`
+#      - if your changes affect several modules, you can use comma separated scope (ex: `feat(calibrate,train): add new training method`).
+# The <subject> is mandatory and it contains a succinct description of the change
+#
+# The <body> is optional and it is used to extend the <subject> if necessary
+#
+# The <footer> is optional and it can contain information about breaking changes and is also the place to reference GitHub issues, that this commit closes or is related to.
+#
