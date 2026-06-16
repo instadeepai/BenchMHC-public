@@ -124,7 +124,7 @@ If you use `BenchMHC` in your research, please cite the following paper:
 ```bash
 @article{BenchMHC,
     title        = {BenchMHC: Towards a universal standard for reproducible peptide-MHC presentation prediction in neoantigen discovery},
-    author       = {Borck, Théomé and Chabrol, Marion and Colombo, Daniel and Imbert, Arthur and Volzhenin, Konstantin and Perier-Dulhoste, Martin},
+    author       = {Borck, Théomé and Chabrol, Marion and Colombo, Daniel and Imbert, Arthur and Volzhenin, Konstantin and Perier-Dulhoste, Martin and Lopez Carranza, Nicolas},
     year         = 2026,
     month        = {Mar},
     day          = 31,
