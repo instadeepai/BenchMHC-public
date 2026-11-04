@@ -1,15 +1,18 @@
 """Unit tests related to bench_mhc/utils/model.py."""
 
 import uuid
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import lightning
 import pytest
+import torch
 from click.testing import CliRunner
 
 from bench_mhc.cli.train_command import train
+from bench_mhc.utils.io import load_json
 from bench_mhc.utils.io import save_json
 from bench_mhc.utils.model import get_directory_name
 from bench_mhc.utils.model import load_model_from_path
@@ -94,6 +97,69 @@ def test_load_model_from_path(
             model = load_model_from_path(model_path)
 
             assert isinstance(model, lightning.pytorch.LightningModule)
+
+
+def test_load_model_from_path_with_hparams_inputs_without_class_name(
+    model_directory: Path,
+    cache_directory: Path,
+    training_path: str,
+    configuration_file_path: str,
+) -> None:
+    """Test a model loads when its hparams.json inputs predate `class_name`.
+
+    The published checkpoints are stored beside an `hparams.json` written by an
+    earlier release, whose input variables carry no `class_name`. The
+    checkpoint's own hyper_parameters do carry it, so they are what the model
+    is built from.
+    """
+    experiment_name = "test_load_model_from_hparams_without_class_name"
+    parameters = [
+        "--experiment_name",
+        experiment_name,
+        "--configuration_file_path",
+        configuration_file_path,
+        "--training_path",
+        training_path,
+        "--validation_path",
+        training_path,
+    ]
+
+    model_name = get_directory_name(experiment_name)
+
+    runner = CliRunner()
+
+    with (
+        patch("bench_mhc.cli.train.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.CACHE_DIRECTORY", cache_directory),
+        patch("bench_mhc.model.mhc1_nn_align.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.get_directory_name", return_value=model_name),
+    ):
+        runner.invoke(train, parameters, catch_exceptions=False)
+
+        model_path = model_directory / model_name
+
+        # Rebuild the shape the published checkpoints have: the input
+        # description lives in the checkpoint, and `hparams.json` holds a
+        # reduced copy of it that names no class. A model trained by the
+        # current code keeps it only in `hparams.json`, so both halves are
+        # restaged here.
+        hparams_path = model_path / "hparams.json"
+        hparams = load_json(hparams_path)
+        inputs = hparams["configuration"]["variables"]["inputs"]
+        assert inputs, "the trained model wrote no input variables to describe"
+
+        checkpoint_path = model_path / "checkpoints" / "best.ckpt"
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        checkpoint["hyper_parameters"]["inputs"] = deepcopy(inputs)
+        torch.save(checkpoint, checkpoint_path)
+
+        for variable in inputs.values():
+            variable.pop("class_name", None)
+        save_json(hparams, hparams_path)
+
+        model = load_model_from_path(model_path)
+
+    assert isinstance(model, lightning.pytorch.LightningModule)
 
 
 def test_load_model_from_path_missing_hparams(tmp_path: Path) -> None:
