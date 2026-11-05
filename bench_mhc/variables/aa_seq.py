@@ -1,10 +1,12 @@
 """Module to define the variable for a sequence of amino acids."""
 
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Literal
 
 import polars as pl
 
+from bench_mhc.constants import CURRENT_DIRECTORY
 from bench_mhc.constants import PAD_TOKEN
 from bench_mhc.constants import LazyOrDataFrame
 from bench_mhc.utils.errors import NotFittedError
@@ -16,6 +18,33 @@ from bench_mhc.variables.base import maybe_raised_not_fitted
 from bench_mhc.variables.base import skip_if_fitted
 
 log = system.get(__name__)
+
+
+def resolve_mapping_file_path(mapping_file_path: str) -> Path:
+    """Where to read a mapping file from.
+
+    A variable keeps this path as it was given when the model was trained, and the
+    published class I checkpoints keep `data/mappings/allele2netmhc_pseudo_seq.json`,
+    which is relative and so only resolves when the working directory happens to be the
+    repository root. That mapping ships inside the package, so a relative path that is not
+    found as written is looked for there as well.
+
+    Args:
+        mapping_file_path: The path the variable was given.
+
+    Returns:
+        The packaged copy if the path was relative, missing, and packaged; otherwise the
+        path as given, so that a failure names what the caller asked for.
+    """
+    path = Path(mapping_file_path)
+    if path.exists():
+        return path
+
+    packaged = CURRENT_DIRECTORY / path
+    if not path.is_absolute() and packaged.exists():
+        return packaged
+
+    return path
 
 
 class AASeqVariable(BaseVariable):
@@ -109,7 +138,7 @@ class AASeqVariable(BaseVariable):
             The maybe mapped LazyOrDataFrame.
         """
         if self.mapping_file_path is not None:
-            mapping = load_json(self.mapping_file_path)
+            mapping = load_json(resolve_mapping_file_path(self.mapping_file_path))
 
             values = set(
                 lf.lazy()
