@@ -3,8 +3,11 @@
 import uuid
 from datetime import datetime
 from pathlib import Path
+from pathlib import PosixPath
+from pathlib import WindowsPath
 
 import lightning
+import torch
 
 from bench_mhc.constants import SEPARATOR
 from bench_mhc.model import MODEL_NAME2LIGHTNING_MODULE
@@ -32,6 +35,27 @@ def get_directory_name(experiment_name: str) -> str:
     directory_name = f"{experiment_name}{SEPARATOR}{timestamp}{SEPARATOR}{uuid_}"
 
     return directory_name
+
+
+def _allow_paths_under_weights_only() -> None:
+    """Let `torch.load` rebuild the `pathlib` values a checkpoint keeps in its hparams.
+
+    Published checkpoints store `PosixPath` objects in their hyper-parameters. torch 2.6
+    made `weights_only=True` the default for `torch.load`, and lightning now follows that
+    default, so from those versions on the unpickler refuses the file:
+
+        WeightsUnpickler error: Unsupported global: GLOBAL pathlib.PosixPath
+
+    Allowing the two concrete `pathlib` classes keeps the rest of what `weights_only`
+    protects against, which loading with `weights_only=False` would give up altogether.
+    Building a path has no side effects, which is what makes allowing it safe.
+
+    `add_safe_globals` arrived in torch 2.4. Before it the default is already `False` and
+    there is nothing to allow, so this is a no-op there.
+    """
+    add_safe_globals = getattr(torch.serialization, "add_safe_globals", None)
+    if add_safe_globals is not None:
+        add_safe_globals([PosixPath, WindowsPath])
 
 
 def load_model_from_path(
@@ -77,6 +101,8 @@ def load_model_from_path(
     load_kwargs = {}
     if inputs_hparams is not None:
         load_kwargs["inputs"] = inputs_hparams
+
+    _allow_paths_under_weights_only()
 
     return lightning_module_class.load_from_checkpoint(best_checkpoint_path, **load_kwargs)
 
