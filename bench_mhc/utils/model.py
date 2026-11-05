@@ -34,6 +34,28 @@ def get_directory_name(experiment_name: str) -> str:
     return directory_name
 
 
+def _inputs_are_parsable(inputs: dict | None) -> bool:
+    """Whether an `hparams.json` inputs block is in the format `Variables` reads.
+
+    Earlier releases, including the ones that produced the published
+    checkpoints, described each input variable without its `class_name`.
+    `Variables.from_dict` needs that field to pick the class to build, so such
+    a block cannot be used and the checkpoint's own description is preferred.
+
+    Args:
+        inputs: The `variables.inputs` block of an `hparams.json`, if it has one.
+
+    Returns:
+        Whether every variable in the block names its class.
+    """
+    if not inputs:
+        return False
+
+    return all(
+        isinstance(variable, dict) and "class_name" in variable for variable in inputs.values()
+    )
+
+
 def load_model_from_path(
     model_path: str | Path,
 ) -> lightning.pytorch.LightningModule:
@@ -73,9 +95,11 @@ def load_model_from_path(
     # Try to get inputs from nested location
     inputs_hparams = configuration.get("variables", {}).get("inputs")
 
-    # In case the inputs are not in the hparams, we load them from the checkpoint
+    # In case the inputs are not in the hparams, or are described in a format
+    # that predates `class_name`, we load them from the checkpoint, whose own
+    # hyper_parameters carry the full description.
     load_kwargs = {}
-    if inputs_hparams is not None:
+    if _inputs_are_parsable(inputs_hparams):
         load_kwargs["inputs"] = inputs_hparams
 
     return lightning_module_class.load_from_checkpoint(best_checkpoint_path, **load_kwargs)
