@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import lightning
 import pytest
+import torch
 from click.testing import CliRunner
 
 from bench_mhc.cli.train_command import train
@@ -230,3 +231,61 @@ def test_should_apply_sigmoid_with_no_logits_loss_multiple_outputs(tmp_path: Pat
     save_json(hparams, model_dir / "hparams.json")
 
     assert should_apply_sigmoid_for_percentile_rank(model_dir) is False
+
+
+def test_load_model_from_path_passes_map_location(
+    model_directory: Path,
+    cache_directory: Path,
+    training_path: str,
+    configuration_file_path: str,
+) -> None:
+    """Test `map_location` reaches `torch.load`, which is what keeps a checkpoint portable.
+
+    A checkpoint records the device every storage was saved from, and nine of the fifty
+    published class I models name `cuda:1`, `cuda:2` or `cuda:3`. Without a `map_location`
+    lightning honours those tags on any machine that has CUDA at all, so loading fails
+    wherever there are fewer GPUs than the training host had.
+
+    A callable is used because it records that it was consulted: with the argument dropped,
+    lightning substitutes its own default and this one is never called. It returns `None`
+    so that torch falls back to its usual handling for each storage.
+
+    Args:
+        model_directory: Directory the model is trained into.
+        cache_directory: Directory the dataset cache is written to.
+        training_path: Path to the training data.
+        configuration_file_path: Path to the training configuration.
+    """
+    experiment_name = "test_load_model_from_path_passes_map_location"
+    parameters = [
+        "--experiment_name",
+        experiment_name,
+        "--configuration_file_path",
+        configuration_file_path,
+        "--training_path",
+        training_path,
+        "--validation_path",
+        training_path,
+    ]
+
+    model_name = get_directory_name(experiment_name)
+    asked_for: list[str] = []
+
+    def record(_storage: torch.UntypedStorage, location: str) -> None:
+        asked_for.append(location)
+        return None
+
+    runner = CliRunner()
+
+    with (
+        patch("bench_mhc.cli.train.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.CACHE_DIRECTORY", cache_directory),
+        patch("bench_mhc.model.mhc1_nn_align.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.get_directory_name", return_value=model_name),
+    ):
+        runner.invoke(train, parameters, catch_exceptions=False)
+
+        model = load_model_from_path(model_directory / model_name, map_location=record)
+
+    assert isinstance(model, lightning.pytorch.LightningModule)
+    assert asked_for, "map_location was never consulted, so it did not reach torch.load"
