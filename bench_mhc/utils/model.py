@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import lightning
+from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE
 
 from bench_mhc.constants import SEPARATOR
 from bench_mhc.model import MODEL_NAME2LIGHTNING_MODULE
@@ -36,11 +37,25 @@ def get_directory_name(experiment_name: str) -> str:
 
 def load_model_from_path(
     model_path: str | Path,
+    map_location: _MAP_LOCATION_TYPE = "cpu",
 ) -> lightning.pytorch.LightningModule:
     """Loads a model from a path.
 
     Args:
         model_path: Path to the directory containing the model (hparams.json and checkpoints).
+        map_location: Where the checkpoint's storages are put as they are read. Typed with
+            lightning's own alias rather than a copy of it, which could drift from what
+            `load_from_checkpoint` accepts.
+
+            A checkpoint records the device each storage was saved from, and nine of the
+            fifty published class I models name `cuda:1`, `cuda:2` or `cuda:3`. Honouring
+            those tags fails on any machine with fewer GPUs than the training host had, so
+            the default reads onto CPU, which works everywhere. `Trainer` moves the module
+            to the accelerator before predicting, so this does not keep inference off a GPU.
+
+            Leaving this unset is not equivalent to passing `None`: lightning then
+            substitutes its own `_default_map_location`, which redirects to CPU only when
+            CUDA is unavailable.
 
     Returns:
         The instantiated PyTorch Lightning module.
@@ -78,7 +93,9 @@ def load_model_from_path(
     if inputs_hparams is not None:
         load_kwargs["inputs"] = inputs_hparams
 
-    return lightning_module_class.load_from_checkpoint(best_checkpoint_path, **load_kwargs)
+    return lightning_module_class.load_from_checkpoint(
+        best_checkpoint_path, map_location=map_location, **load_kwargs
+    )
 
 
 def should_apply_sigmoid_for_percentile_rank(model_path: str | Path) -> bool:
