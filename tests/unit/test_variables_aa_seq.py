@@ -1,17 +1,21 @@
 """Unit tests related to bench_mhc/variables/aa_seq.py."""
 
 import itertools
+from importlib import resources
+from pathlib import Path
 from typing import Literal
 from unittest.mock import patch
 
 import polars as pl
 import pytest
 
+from bench_mhc.constants import ALLELE_MAPPING_PATH
 from bench_mhc.constants import NATURAL_AAS
 from bench_mhc.constants import PAD_TOKEN
 from bench_mhc.utils.errors import NotFittedError
 from bench_mhc.utils.format import format_iterable
 from bench_mhc.variables import AASeqVariable
+from bench_mhc.variables.aa_seq import resolve_mapping_file_path
 
 
 @pytest.fixture
@@ -306,3 +310,58 @@ class TestAASeqVariable:
             "configuration file.",
         ):
             variable.transform(dataframe)
+
+
+def test_allele_mapping_ships_with_the_package() -> None:
+    """Test the allele mapping is part of the distribution, not just of the repository.
+
+    It is read whenever a model with an allele variable is used, so an installed package
+    that does not carry it cannot load a single published checkpoint.
+    """
+    packaged = resources.files("bench_mhc").joinpath("data/mappings/allele2netmhc_pseudo_seq.json")
+
+    assert packaged.is_file()
+    assert ALLELE_MAPPING_PATH == Path(str(packaged))
+
+
+def test_resolve_mapping_file_path_falls_back_to_the_packaged_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test the relative path the published checkpoints store resolves from any directory.
+
+    Args:
+        tmp_path: A directory that is not the repository root.
+        monkeypatch: Fixture used to change the working directory.
+    """
+    monkeypatch.chdir(tmp_path)
+    stored = "data/mappings/allele2netmhc_pseudo_seq.json"
+
+    assert not Path(stored).exists()
+    assert resolve_mapping_file_path(stored) == ALLELE_MAPPING_PATH
+
+
+def test_resolve_mapping_file_path_prefers_the_path_as_given(tmp_path: Path) -> None:
+    """Test a mapping file that is where it says it is wins over the packaged one.
+
+    Args:
+        tmp_path: Directory the mapping file is written in.
+    """
+    mapping_path = tmp_path / "data" / "mappings" / "allele2netmhc_pseudo_seq.json"
+    mapping_path.parent.mkdir(parents=True)
+    mapping_path.write_text("{}")
+
+    assert resolve_mapping_file_path(str(mapping_path)) == mapping_path
+
+
+def test_resolve_mapping_file_path_keeps_a_path_it_cannot_find(tmp_path: Path) -> None:
+    """Test a path that is neither on disk nor packaged is returned unchanged.
+
+    The caller should be told about the file they asked for, not about a packaged one
+    they have never heard of.
+
+    Args:
+        tmp_path: Directory used to build a path that does not exist.
+    """
+    missing = tmp_path / "no" / "such" / "mapping.json"
+
+    assert resolve_mapping_file_path(str(missing)) == missing

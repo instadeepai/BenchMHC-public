@@ -165,7 +165,7 @@ Architecture
 !!! tip "Pseudo-sequence mapping"
 
     A mapping from allele names to their pseudo-sequences is available in
-    `data/mappings/allele2netmhc_pseudo_seq.json`.
+    `bench_mhc/data/mappings/allele2netmhc_pseudo_seq.json`.
 
 !!! info "BLOSUM62"
 

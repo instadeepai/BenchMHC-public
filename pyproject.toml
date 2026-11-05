@@ -127,6 +127,9 @@ max-complexity = 15
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.setuptools.package-data]
+bench_mhc = ["data/**/*.json"]
+
 [tool.setuptools.packages.find]
 include = ["bench_mhc*"]
 
