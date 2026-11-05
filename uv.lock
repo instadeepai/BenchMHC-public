@@ -254,7 +254,7 @@ requires-dist = [
     { name = "biopython", specifier = ">=1.84" },
     { name = "lightning", specifier = ">=2.4.0" },
     { name = "matplotlib", specifier = ">=3.10.1" },
-    { name = "mhcgnomes", specifier = ">=1.8.6" },
+    { name = "mhcgnomes", specifier = ">=1.8.6,<3.19" },
     { name = "mlflow-skinny", specifier = ">=3.10.0" },
     { name = "nbconvert", specifier = ">=7.16.5" },
     { name = "notebook", specifier = ">=7.2.2" },
