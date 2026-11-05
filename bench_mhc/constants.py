@@ -1,5 +1,6 @@
 """Module used to define useful constants for the project."""
 
+import os
 from pathlib import Path
 from typing import TypeVar
 
@@ -10,9 +11,13 @@ LazyOrDataFrame = TypeVar("LazyOrDataFrame", pl.LazyFrame, pl.DataFrame)
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 ROOT_DIRECTORY = CURRENT_DIRECTORY.parent
 
-CACHE_DIRECTORY = ROOT_DIRECTORY / ".cache"
+# The two directories the package writes to. They default inside the repository, which is
+# where both documented installations run from, and are overridable because an installed
+# package puts ROOT_DIRECTORY in site-packages, where a process that is not root cannot
+# write.
+CACHE_DIRECTORY = Path(os.environ.get("BENCH_MHC_CACHE_DIRECTORY") or ROOT_DIRECTORY / ".cache")
 
-MODEL_DIRECTORY = ROOT_DIRECTORY / "models"
+MODEL_DIRECTORY = Path(os.environ.get("BENCH_MHC_MODEL_DIRECTORY") or ROOT_DIRECTORY / "models")
 
 NATURAL_AAS = "ACDEFGHIKLMNPQRSTVWY"
 
