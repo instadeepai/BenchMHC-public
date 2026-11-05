@@ -1,5 +1,7 @@
 """Unit tests related to bench_mhc/utils/model.py."""
 
+import subprocess
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +9,7 @@ from unittest.mock import patch
 
 import lightning
 import pytest
+import torch
 from click.testing import CliRunner
 
 from bench_mhc.cli.train_command import train
@@ -14,6 +17,23 @@ from bench_mhc.utils.io import save_json
 from bench_mhc.utils.model import get_directory_name
 from bench_mhc.utils.model import load_model_from_path
 from bench_mhc.utils.model import should_apply_sigmoid_for_percentile_rank
+
+# Loads a checkpoint the way torch 2.6 and later do by default. Run as its own process so
+# that the refusal can be observed: `add_safe_globals` is process-wide, so in the pytest
+# interpreter the unallowed half would start passing as soon as any other test had loaded
+# a model.
+WEIGHTS_ONLY_PROBE = """
+import sys
+
+import torch
+
+if sys.argv[2] == "allow":
+    from bench_mhc.utils.model import _allow_paths_under_weights_only
+
+    _allow_paths_under_weights_only()
+
+torch.load(sys.argv[1], map_location="cpu", weights_only=True)
+"""
 
 
 @pytest.fixture
@@ -230,3 +250,33 @@ def test_should_apply_sigmoid_with_no_logits_loss_multiple_outputs(tmp_path: Pat
     save_json(hparams, model_dir / "hparams.json")
 
     assert should_apply_sigmoid_for_percentile_rank(model_dir) is False
+
+
+@pytest.mark.skipif(
+    not hasattr(torch.serialization, "add_safe_globals"),
+    reason="torch before 2.4 has no allowlist, and there weights_only already defaults to False",
+)
+@pytest.mark.parametrize(("mode", "expected_to_load"), [("plain", False), ("allow", True)])
+def test_paths_in_hparams_load_under_weights_only(
+    tmp_path: Path, mode: str, expected_to_load: bool
+) -> None:
+    """A checkpoint holding a `Path` loads under `weights_only=True` once paths are allowed.
+
+    Args:
+        tmp_path: Directory to write the checkpoint in.
+        mode: Whether the probe allows `pathlib` classes before loading.
+        expected_to_load: Whether the probe is expected to succeed.
+    """
+    checkpoint_path = tmp_path / "with_a_path.ckpt"
+    torch.save({"hyper_parameters": {"model_path": Path("a") / "model"}}, checkpoint_path)
+
+    completed = subprocess.run(
+        [sys.executable, "-c", WEIGHTS_ONLY_PROBE, str(checkpoint_path), mode],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (completed.returncode == 0) is expected_to_load, completed.stderr
+    if not expected_to_load:
+        assert "UnpicklingError" in completed.stderr
