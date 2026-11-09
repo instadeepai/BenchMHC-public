@@ -1,5 +1,8 @@
 default_language_version:
   python: python3
+  # Pin Node.js for the node-based hooks (markdownlint) so that the lint image does not
+  # depend on whatever nodejs.org publishes next, e.g. a pre-release like v27.0.0-alpha.0.0.0.
+  node: "22.21.1"
 
 default_stages: [pre-commit]
 
