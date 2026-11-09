@@ -70,7 +70,6 @@ class BaseLightningModule(lightning.LightningModule, ABC):
             relative_model_path = Path(model_path)
 
         self.relative_model_path = relative_model_path
-        self.model_path.mkdir(parents=True, exist_ok=True)
 
         self.configuration = configuration
 
@@ -115,12 +114,27 @@ class BaseLightningModule(lightning.LightningModule, ABC):
         # want logged as MLflow params. We must update both _hparams and _hparams_initial because
         # Lightning sends _hparams_initial (not _hparams) to the logger at trainer.fit() time.
         # self.configuration remains unmodified so the model retains full access to input defs.
-        # Inputs are still written to hparams.json on disk via save_hparams() below.
+        # Inputs are still written to hparams.json on disk by save_hparams().
         config_for_hparams = copy.deepcopy(self.configuration)
         config_for_hparams.get("variables", {}).pop("inputs", None)
         self._hparams["configuration"] = config_for_hparams
         self._hparams_initial["configuration"] = copy.deepcopy(config_for_hparams)
 
+    def prepare_artifacts(self) -> None:
+        """Create the model directory and write the first `hparams.json` into it.
+
+        Called by the training entry point once the module is built. It is deliberately
+        not part of `__init__`, so that constructing a module records where its artifacts
+        go without creating anything: `load_from_checkpoint` builds a module too, and
+        inference has no business writing to disk.
+
+        That matters beyond tidiness, because `model_path` is derived from the
+        checkpoint's own `model_path` hyper-parameter rather than from wherever the
+        caller loaded it: writing on load would write under `MODEL_DIRECTORY`, which for
+        an installed package is inside `site-packages` and is read-only to a process that
+        is not root.
+        """
+        self.model_path.mkdir(parents=True, exist_ok=True)
         self.save_hparams()
 
     @property

@@ -130,6 +130,7 @@ def train(
         inputs=data_module.inputs,
         outputs=data_module.outputs,
     )
+    model.prepare_artifacts()
 
     logger = get_logger(
         model=model,

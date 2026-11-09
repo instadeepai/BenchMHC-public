@@ -167,11 +167,13 @@ class TestMHC1NNAlignLightningModule:
                 outputs=mhc1_nn_align_dataset.outputs,
             )
 
-            assert module.model_path.exists()
+            assert not module.model_path.exists(), "building a module should write nothing"
             assert isinstance(module.model, MHC1NNAlignModel)
 
+            module.prepare_artifacts()
+            assert module.model_path.exists()
+
             assert module.hparams_path == model_path / "hparams.json"
-            module.save_hparams()
             assert module.hparams_path.exists()
 
             input_tensors, label_tensors = batch
@@ -276,6 +278,9 @@ class TestMHC1NNAlignLightningModule:
             )
 
             assert module.model_path == model_directory / model_path
+            assert not module.model_path.exists(), "building a module should write nothing"
+
+            module.prepare_artifacts()
             assert module.model_path.exists()
             assert str(module.hparams["model_path"]) == model_path
 

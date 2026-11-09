@@ -1,5 +1,6 @@
 """Unit tests related to bench_mhc/utils/model.py."""
 
+import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -230,3 +231,63 @@ def test_should_apply_sigmoid_with_no_logits_loss_multiple_outputs(tmp_path: Pat
     save_json(hparams, model_dir / "hparams.json")
 
     assert should_apply_sigmoid_for_percentile_rank(model_dir) is False
+
+
+def test_load_model_from_path_writes_nothing(
+    tmp_path: Path,
+    model_directory: Path,
+    cache_directory: Path,
+    training_path: str,
+    configuration_file_path: str,
+) -> None:
+    """Test loading a model creates nothing under MODEL_DIRECTORY.
+
+    A module's `model_path` is `MODEL_DIRECTORY / relative_model_path`, and
+    `relative_model_path` comes from the checkpoint's own hyper-parameters rather than
+    from the path the caller asked for. So a module that set its directory up while being
+    built would do so in a place the caller never named, and for an installed package that
+    place is inside `site-packages`, which a process that is not root cannot write to.
+
+    The model is therefore loaded from a copy, with the original removed, so that anything
+    recreated under MODEL_DIRECTORY can only have come from the load.
+
+    Args:
+        tmp_path: Directory the copy of the model is made in.
+        model_directory: Directory the model is trained into.
+        cache_directory: Directory the dataset cache is written to.
+        training_path: Path to the training data.
+        configuration_file_path: Path to the training configuration.
+    """
+    experiment_name = "test_load_model_from_path_writes_nothing"
+    parameters = [
+        "--experiment_name",
+        experiment_name,
+        "--configuration_file_path",
+        configuration_file_path,
+        "--training_path",
+        training_path,
+        "--validation_path",
+        training_path,
+    ]
+
+    model_name = get_directory_name(experiment_name)
+
+    runner = CliRunner()
+
+    with (
+        patch("bench_mhc.cli.train.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.CACHE_DIRECTORY", cache_directory),
+        patch("bench_mhc.model.mhc1_nn_align.MODEL_DIRECTORY", model_directory),
+        patch("bench_mhc.cli.train.get_directory_name", return_value=model_name),
+    ):
+        runner.invoke(train, parameters, catch_exceptions=False)
+
+        trained_path = model_directory / model_name
+        elsewhere = tmp_path / "elsewhere"
+        shutil.copytree(trained_path, elsewhere)
+        shutil.rmtree(trained_path)
+
+        model = load_model_from_path(elsewhere)
+
+    assert isinstance(model, lightning.pytorch.LightningModule)
+    assert not trained_path.exists(), f"loading recreated {trained_path}"
