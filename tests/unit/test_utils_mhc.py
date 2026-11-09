@@ -15,8 +15,8 @@ def test_the_shipped_mapping_survives_formatting() -> None:
 
     This is a property of the installed `mhcgnomes`, not of this repository: it holds up to
     mhcgnomes 3.18.0 and breaks from 3.19.0, which adds a leading zero to the gene field of
-    macaque alleles (`Mamu__B01` becomes `Mamu__B001`). `pyproject.toml` excludes those
-    versions; this is what notices if a later one moves the names again.
+    macaque alleles (`Mamu__B01` becomes `Mamu__B001`). `pyproject.toml` pins 3.18.0; this
+    is what notices if bumping that pin moves the names again.
     """
     mapping = json.loads(ALLELE_MAPPING_PATH.read_text())
     assert mapping, f"no alleles read from {ALLELE_MAPPING_PATH}"
