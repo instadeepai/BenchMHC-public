@@ -42,3 +42,57 @@ def test_written_directories_are_overridable(
         importlib.reload(bench_mhc.constants)
 
     assert getattr(bench_mhc.constants, constant) == default
+
+
+@pytest.mark.parametrize(
+    ("variable", "constant"),
+    [
+        ("BENCH_MHC_CACHE_DIRECTORY", "CACHE_DIRECTORY"),
+        ("BENCH_MHC_MODEL_DIRECTORY", "MODEL_DIRECTORY"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("relative/elsewhere", "cwd/relative/elsewhere"),
+        ("~/elsewhere", "home/elsewhere"),
+    ],
+)
+def test_written_directories_are_absolute(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    variable: str,
+    constant: str,
+    value: str,
+    expected: str,
+) -> None:
+    """Test a relative or `~` override is made absolute when the package is imported.
+
+    A relative `BENCH_MHC_MODEL_DIRECTORY` broke training: `train` builds the model path as
+    `MODEL_DIRECTORY / name`, which was then not absolute, so `BaseLightningModule` took it
+    as relative to `MODEL_DIRECTORY` and the artifacts landed in `models/models/<name>`.
+    Resolving once at import also keeps a relative cache directory from following the
+    working directory of each process.
+
+    Args:
+        tmp_path: Directory holding the working directory and home directory of the test.
+        monkeypatch: Fixture used to set the environment and the working directory.
+        variable: The environment variable that overrides the constant.
+        constant: The name of the constant it overrides.
+        value: The value given to the environment variable.
+        expected: Where it should resolve to, relative to `tmp_path`.
+    """
+    root = tmp_path.resolve()
+    (root / "cwd").mkdir()
+    (root / "home").mkdir()
+    monkeypatch.chdir(root / "cwd")
+    monkeypatch.setenv("HOME", str(root / "home"))
+    monkeypatch.setenv(variable, value)
+    try:
+        directory = getattr(importlib.reload(bench_mhc.constants), constant)
+        assert directory.is_absolute()
+        assert directory == root / expected
+        assert (directory / "name").relative_to(directory) == Path("name")
+    finally:
+        monkeypatch.undo()
+        importlib.reload(bench_mhc.constants)

@@ -90,6 +90,18 @@ predictors for pMHC presentation.
 
 Follow the [_Installation_ guide](docs/guides/installation.md) to install the `bench-mhc` package.
 
+The package writes to two directories, which default to `models/` and `.cache/` next to the
+`bench_mhc` package, i.e. at the repository root in a checkout. When `bench-mhc` is installed as a
+dependency instead (e.g. with `pip install git+https://github.com/instadeepai/BenchMHC-public.git`),
+that is inside `site-packages`, so point them somewhere writable:
+
+```bash
+export BENCH_MHC_MODEL_DIRECTORY=/path/to/models  # trained models and their artifacts
+export BENCH_MHC_CACHE_DIRECTORY=/path/to/cache   # dataset cache
+```
+
+Relative paths and `~` are resolved when `bench_mhc` is imported.
+
 ### Command line
 
 After installation, you can list all available commands (within a Docker container or within your
